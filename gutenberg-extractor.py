@@ -133,7 +133,7 @@ class GutenbergTextExtractor:
 # Example usage
 if __name__ == "__main__":
     extractor = GutenbergTextExtractor()
-    passages = extractor.get_dickens_descriptions(num_passages=3)
+    passages = extractor.get_dickens_descriptions(num_passages=4)
     
     print("\n" + "="*60)
     print("DESCRIPTIVE PASSAGES FROM CHARLES DICKENS' WORKS")
