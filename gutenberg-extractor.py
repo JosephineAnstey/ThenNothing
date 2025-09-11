@@ -66,27 +66,54 @@ class GutenbergTextExtractor:
         return text[start_index:end_index].strip()
     
     def extract_descriptive_passages(self, text, num_passages=3, passage_length=3):
-        """Extract descriptive passages from text"""
+        """Extract landscape, seascape, or cityscape passages from text"""
         # Split text into sentences
         sentences = re.split(r'(?<=[.!?])\s+', text)
         
-        # Filter for descriptive sentences (longer sentences with descriptive words)
+        # Keywords for landscape, seascape, and cityscape descriptions
+        landscape_keywords = [
+            'mountain', 'hill', 'valley', 'forest', 'wood', 'field', 'meadow', 'river', 'stream', 
+            'brook', 'lake', 'tree', 'flower', 'grass', 'path', 'road', 'countryside', 'landscape',
+            'cliff', 'peak', 'slope', 'glade', 'orchard', 'garden', 'park', 'vineyard', 'prairie'
+        ]
+        
+        seascape_keywords = [
+            'sea', 'ocean', 'wave', 'beach', 'shore', 'coast', 'harbor', 'bay', 'tide', 'current',
+            'sail', 'ship', 'boat', 'water', 'foam', 'spray', 'cliff', 'rock', 'island', 'cape',
+            'strand', 'nautical', 'maritime', 'naval', 'seafaring', 'wharf', 'pier', 'dock'
+        ]
+        
+        cityscape_keywords = [
+            'city', 'town', 'street', 'avenue', 'boulevard', 'alley', 'square', 'plaza', 'building',
+            'house', 'mansion', 'cottage', 'palace', 'tower', 'spire', 'roof', 'window', 'door',
+            'bridge', 'canal', 'market', 'shop', 'tavern', 'inn', 'church', 'cathedral', 'monument',
+            'urban', 'metropolitan', 'municipal', 'civic', 'downtown', 'suburb', 'quarter', 'district'
+        ]
+        
+        # Combine all keywords
+        all_keywords = landscape_keywords + seascape_keywords + cityscape_keywords
+        
+        # Find sentences containing these keywords
         descriptive_sentences = []
         for sentence in sentences:
-            if len(sentence.split()) > 8:  # Longer sentences tend to be more descriptive
-                # Check for descriptive indicators
-                descriptive_indicators = [
-                    r'\b(was|were|is|are|been|being)\b',  # Being verbs
-                    r'\b(with|in|on|at|by|through|across)\b',  # Prepositions
-                    r'\b(which|that|who|whose|whom)\b',  # Relative pronouns
-                ]
+            # Check if sentence contains any of our keywords
+            if any(keyword in sentence.lower() for keyword in all_keywords):
+                # Additional checks to ensure it's descriptive
+                has_adjectives = re.search(r'\b(beautiful|majestic|vast|towering|serene|peaceful|'
+                                         r'grand|magnificent|picturesque|ancient|modern|busy|'
+                                         r'bustling|crowded|quiet|tranquil|calm|stormy|windy|'
+                                         r'sunny|shadowy|gloomy|bright|dark|colorful|grey|'
+                                         r'misty|foggy|rainy|snowy|icy|rocky|sandy|grassy|'
+                                         r'wooded|forested|leafy|blooming|flowering)\b', 
+                                         sentence, re.IGNORECASE)
                 
-                indicator_count = 0
-                for indicator in descriptive_indicators:
-                    if re.search(indicator, sentence, re.IGNORECASE):
-                        indicator_count += 1
+                has_prepositions = re.search(r'\b(in|on|at|over|under|above|below|beneath|'
+                                           r'beside|along|through|across|around|between|'
+                                           r'among|beyond|past|near|far from)\b', 
+                                           sentence, re.IGNORECASE)
                 
-                if indicator_count >= 2:
+                # Longer sentences tend to be more descriptive
+                if len(sentence.split()) > 6 and (has_adjectives or has_prepositions):
                     descriptive_sentences.append(sentence)
         
         # Create passages by grouping sentences
@@ -98,12 +125,35 @@ class GutenbergTextExtractor:
                     
                 start_index = random.randint(0, len(descriptive_sentences) - passage_length)
                 passage = " ".join(descriptive_sentences[start_index:start_index + passage_length])
-                passages.append(passage)
+                
+                # Classify the passage type
+                passage_type = self.classify_passage(passage, landscape_keywords, 
+                                                    seascape_keywords, cityscape_keywords)
+                
+                passages.append({
+                    'text': passage,
+                    'type': passage_type
+                })
                 
                 # Remove these sentences to avoid repetition
                 descriptive_sentences = descriptive_sentences[:start_index] + descriptive_sentences[start_index + passage_length:]
         
         return passages
+    
+    def classify_passage(self, passage, landscape_keywords, seascape_keywords, cityscape_keywords):
+        """Classify passage as landscape, seascape, or cityscape"""
+        passage_lower = passage.lower()
+        
+        landscape_count = sum(1 for keyword in landscape_keywords if keyword in passage_lower)
+        seascape_count = sum(1 for keyword in seascape_keywords if keyword in passage_lower)
+        cityscape_count = sum(1 for keyword in cityscape_keywords if keyword in passage_lower)
+        
+        if seascape_count > landscape_count and seascape_count > cityscape_count:
+            return "seascape"
+        elif cityscape_count > landscape_count and cityscape_count > seascape_count:
+            return "cityscape"
+        else:
+            return "landscape"
     
     def get_dickens_descriptions(self, num_passages=3):
         """Get descriptive passages from Dickens' works"""
@@ -119,7 +169,8 @@ class GutenbergTextExtractor:
                 
                 for passage in passages:
                     all_passages.append({
-                        'text': passage,
+                        'text': passage['text'],
+                        'type': passage['type'],
                         'source': title,
                         'book_id': book_id
                     })
@@ -133,14 +184,14 @@ class GutenbergTextExtractor:
 # Example usage
 if __name__ == "__main__":
     extractor = GutenbergTextExtractor()
-    passages = extractor.get_dickens_descriptions(num_passages=4)
+    passages = extractor.get_dickens_descriptions(num_passages=3)
     
-    print("\n" + "="*60)
-    print("DESCRIPTIVE PASSAGES FROM CHARLES DICKENS' WORKS")
-    print("="*60)
+    print("\n" + "="*70)
+    print("LANDSCAPE, SEASCAPE, AND CITYSCAPE DESCRIPTIONS FROM CHARLES DICKENS")
+    print("="*70)
     
     for i, passage in enumerate(passages, 1):
-        print(f"\n{i}. From {passage['source']} (Book ID: {passage['book_id']}):")
-        print('-' * 40)
+        print(f"\n{i}. {passage['type'].upper()} from {passage['source']} (Book ID: {passage['book_id']}):")
+        print('-' * 60)
         print(passage['text'])
         print()
