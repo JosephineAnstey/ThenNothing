@@ -20,14 +20,12 @@ class GutenbergTextExtractor:
         self.load_config(config_file)
     
     def load_config(self, config_file):
-        """Load keywords and descriptive checks from config file"""
+        """Load keywords and descriptive checks from config file with comma-separated values"""
         self.landscape_keywords = []
         self.seascape_keywords = []
         self.cityscape_keywords = []
         self.adjectives = []
         self.prepositions = []
-        
-        current_section = None
         
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -38,41 +36,61 @@ class GutenbergTextExtractor:
                     if not line or line.startswith('#'):
                         continue
                     
-                    # Check for section headers
-                    if line.lower().startswith('# landscape keywords'):
-                        current_section = 'landscape'
-                        continue
-                    elif line.lower().startswith('# seascape keywords'):
-                        current_section = 'seascape'
-                        continue
-                    elif line.lower().startswith('# cityscape keywords'):
-                        current_section = 'cityscape'
-                        continue
-                    elif line.lower().startswith('# adjectives for descriptive checks'):
-                        current_section = 'adjectives'
-                        continue
-                    elif line.lower().startswith('# prepositions for descriptive checks'):
-                        current_section = 'prepositions'
-                        continue
-                    
-                    # Add items to appropriate section
-                    if current_section == 'landscape':
-                        self.landscape_keywords.append(line.lower())
-                    elif current_section == 'seascape':
-                        self.seascape_keywords.append(line.lower())
-                    elif current_section == 'cityscape':
-                        self.cityscape_keywords.append(line.lower())
-                    elif current_section == 'adjectives':
-                        self.adjectives.append(line.lower())
-                    elif current_section == 'prepositions':
-                        self.prepositions.append(line.lower())
-        
+                    # Parse key: value pairs
+                    if ':' in line:
+                        key, value = line.split(':', 1)
+                        key = key.strip().lower()
+                        value = value.strip()
+                        
+                        # Clean up value by removing any trailing comments
+                        if '#' in value:
+                            value = value.split('#')[0].strip()
+                        
+                        # Parse comma-separated values
+                        values = [v.strip().lower() for v in value.split(',') if v.strip()]
+                        
+                        if key == 'landscape_keywords':
+                            self.landscape_keywords = values
+                        elif key == 'seascape_keywords':
+                            self.seascape_keywords = values
+                        elif key == 'cityscape_keywords':
+                            self.cityscape_keywords = values
+                        elif key == 'adjectives':
+                            self.adjectives = values
+                        elif key == 'prepositions':
+                            self.prepositions = values
+            
+            # Validate that we have all required lists
+            self.validate_config()
+            
         except FileNotFoundError:
             print(f"Config file {config_file} not found. Using default values.")
             self.set_default_keywords()
+        except Exception as e:
+            print(f"Error reading config file: {e}. Using default values.")
+            self.set_default_keywords()
+    
+    def validate_config(self):
+        """Validate that all required configuration lists are populated"""
+        config_errors = []
+        
+        if not self.landscape_keywords:
+            config_errors.append("landscape_keywords is empty")
+        if not self.seascape_keywords:
+            config_errors.append("seascape_keywords is empty")
+        if not self.cityscape_keywords:
+            config_errors.append("cityscape_keywords is empty")
+        if not self.adjectives:
+            config_errors.append("adjectives is empty")
+        if not self.prepositions:
+            config_errors.append("prepositions is empty")
+        
+        if config_errors:
+            print(f"Configuration errors: {', '.join(config_errors)}. Using default values.")
+            self.set_default_keywords()
     
     def set_default_keywords(self):
-        """Set default keywords if config file is not found"""
+        """Set default keywords if config file is not found or invalid"""
         # Default landscape keywords
         self.landscape_keywords = [
             'mountain', 'hill', 'valley', 'forest', 'wood', 'field', 'meadow', 'river', 'stream', 
@@ -175,10 +193,10 @@ class GutenbergTextExtractor:
             # Check if sentence contains any of our keywords
             if any(keyword in sentence.lower() for keyword in all_keywords):
                 # Additional checks to ensure it's descriptive
-                adjectives_pattern = r'\b(' + '|'.join(self.adjectives) + r')\b'
+                adjectives_pattern = r'\b(' + '|'.join(re.escape(adj) for adj in self.adjectives) + r')\b'
                 has_adjectives = re.search(adjectives_pattern, sentence, re.IGNORECASE)
                 
-                prepositions_pattern = r'\b(' + '|'.join(self.prepositions) + r')\b'
+                prepositions_pattern = r'\b(' + '|'.join(re.escape(prep) for prep in self.prepositions) + r')\b'
                 has_prepositions = re.search(prepositions_pattern, sentence, re.IGNORECASE)
                 
                 # Longer sentences tend to be more descriptive

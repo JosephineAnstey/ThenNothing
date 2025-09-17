@@ -17,7 +17,6 @@ def main():
         print('-' * 60)
         print(passage['text'])
         print()
-        
 
 if __name__ == "__main__":
     main()
