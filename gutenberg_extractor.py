@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 
 class GutenbergTextExtractor:
-    def __init__(self):
+    def __init__(self, config_file="config.txt"):
         self.base_url = "https://www.gutenberg.org/files"
         # Dickens' works with descriptive potential
         self.dickens_books = {
@@ -15,6 +15,102 @@ class GutenbergTextExtractor:
             1400: "Great Expectations",
             730: "Oliver Twist"
         }
+        
+        # Load configuration from file
+        self.load_config(config_file)
+    
+    def load_config(self, config_file):
+        """Load keywords and descriptive checks from config file"""
+        self.landscape_keywords = []
+        self.seascape_keywords = []
+        self.cityscape_keywords = []
+        self.adjectives = []
+        self.prepositions = []
+        
+        current_section = None
+        
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    
+                    # Skip empty lines and comments
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    # Check for section headers
+                    if line.lower().startswith('# landscape keywords'):
+                        current_section = 'landscape'
+                        continue
+                    elif line.lower().startswith('# seascape keywords'):
+                        current_section = 'seascape'
+                        continue
+                    elif line.lower().startswith('# cityscape keywords'):
+                        current_section = 'cityscape'
+                        continue
+                    elif line.lower().startswith('# adjectives for descriptive checks'):
+                        current_section = 'adjectives'
+                        continue
+                    elif line.lower().startswith('# prepositions for descriptive checks'):
+                        current_section = 'prepositions'
+                        continue
+                    
+                    # Add items to appropriate section
+                    if current_section == 'landscape':
+                        self.landscape_keywords.append(line.lower())
+                    elif current_section == 'seascape':
+                        self.seascape_keywords.append(line.lower())
+                    elif current_section == 'cityscape':
+                        self.cityscape_keywords.append(line.lower())
+                    elif current_section == 'adjectives':
+                        self.adjectives.append(line.lower())
+                    elif current_section == 'prepositions':
+                        self.prepositions.append(line.lower())
+        
+        except FileNotFoundError:
+            print(f"Config file {config_file} not found. Using default values.")
+            self.set_default_keywords()
+    
+    def set_default_keywords(self):
+        """Set default keywords if config file is not found"""
+        # Default landscape keywords
+        self.landscape_keywords = [
+            'mountain', 'hill', 'valley', 'forest', 'wood', 'field', 'meadow', 'river', 'stream', 
+            'brook', 'lake', 'tree', 'flower', 'grass', 'path', 'road', 'countryside', 'landscape',
+            'cliff', 'peak', 'slope', 'glade', 'orchard', 'garden', 'park', 'vineyard', 'prairie'
+        ]
+        
+        # Default seascape keywords
+        self.seascape_keywords = [
+            'sea', 'ocean', 'wave', 'beach', 'shore', 'coast', 'harbor', 'bay', 'tide', 'current',
+            'sail', 'ship', 'boat', 'water', 'foam', 'spray', 'cliff', 'rock', 'island', 'cape',
+            'strand', 'nautical', 'maritime', 'naval', 'seafaring', 'wharf', 'pier', 'dock'
+        ]
+        
+        # Default cityscape keywords
+        self.cityscape_keywords = [
+            'city', 'town', 'street', 'avenue', 'boulevard', 'alley', 'square', 'plaza', 'building',
+            'house', 'mansion', 'cottage', 'palace', 'tower', 'spire', 'roof', 'window', 'door',
+            'bridge', 'canal', 'market', 'shop', 'tavern', 'inn', 'church', 'cathedral', 'monument',
+            'urban', 'metropolitan', 'municipal', 'civic', 'downtown', 'suburb', 'quarter', 'district'
+        ]
+        
+        # Default adjectives
+        self.adjectives = [
+            'beautiful', 'majestic', 'vast', 'towering', 'serene', 'peaceful',
+            'grand', 'magnificent', 'picturesque', 'ancient', 'modern', 'busy',
+            'bustling', 'crowded', 'quiet', 'tranquil', 'calm', 'stormy', 'windy',
+            'sunny', 'shadowy', 'gloomy', 'bright', 'dark', 'colorful', 'grey',
+            'misty', 'foggy', 'rainy', 'snowy', 'icy', 'rocky', 'sandy', 'grassy',
+            'wooded', 'forested', 'leafy', 'blooming', 'flowering'
+        ]
+        
+        # Default prepositions
+        self.prepositions = [
+            'in', 'on', 'at', 'over', 'under', 'above', 'below', 'beneath',
+            'beside', 'along', 'through', 'across', 'around', 'between',
+            'among', 'beyond', 'past', 'near', 'far from'
+        ]
     
     def get_book_text(self, book_id):
         """Fetch book text from Project Gutenberg"""
@@ -70,28 +166,8 @@ class GutenbergTextExtractor:
         # Split text into sentences
         sentences = re.split(r'(?<=[.!?])\s+', text)
         
-        # Keywords for landscape, seascape, and cityscape descriptions
-        landscape_keywords = [
-            'mountain', 'hill', 'valley', 'forest', 'wood', 'field', 'meadow', 'river', 'stream', 
-            'brook', 'lake', 'tree', 'flower', 'grass', 'path', 'road', 'countryside', 'landscape',
-            'cliff', 'peak', 'slope', 'glade', 'orchard', 'garden', 'park', 'vineyard', 'prairie'
-        ]
-        
-        seascape_keywords = [
-            'sea', 'ocean', 'wave', 'beach', 'shore', 'coast', 'harbor', 'bay', 'tide', 'current',
-            'sail', 'ship', 'boat', 'water', 'foam', 'spray', 'cliff', 'rock', 'island', 'cape',
-            'strand', 'nautical', 'maritime', 'naval', 'seafaring', 'wharf', 'pier', 'dock'
-        ]
-        
-        cityscape_keywords = [
-            'city', 'town', 'street', 'avenue', 'boulevard', 'alley', 'square', 'plaza', 'building',
-            'house', 'mansion', 'cottage', 'palace', 'tower', 'spire', 'roof', 'window', 'door',
-            'bridge', 'canal', 'market', 'shop', 'tavern', 'inn', 'church', 'cathedral', 'monument',
-            'urban', 'metropolitan', 'municipal', 'civic', 'downtown', 'suburb', 'quarter', 'district'
-        ]
-        
         # Combine all keywords
-        all_keywords = landscape_keywords + seascape_keywords + cityscape_keywords
+        all_keywords = self.landscape_keywords + self.seascape_keywords + self.cityscape_keywords
         
         # Find sentences containing these keywords
         descriptive_sentences = []
@@ -99,18 +175,11 @@ class GutenbergTextExtractor:
             # Check if sentence contains any of our keywords
             if any(keyword in sentence.lower() for keyword in all_keywords):
                 # Additional checks to ensure it's descriptive
-                has_adjectives = re.search(r'\b(beautiful|majestic|vast|towering|serene|peaceful|'
-                                         r'grand|magnificent|picturesque|ancient|modern|busy|'
-                                         r'bustling|crowded|quiet|tranquil|calm|stormy|windy|'
-                                         r'sunny|shadowy|gloomy|bright|dark|colorful|grey|'
-                                         r'misty|foggy|rainy|snowy|icy|rocky|sandy|grassy|'
-                                         r'wooded|forested|leafy|blooming|flowering)\b', 
-                                         sentence, re.IGNORECASE)
+                adjectives_pattern = r'\b(' + '|'.join(self.adjectives) + r')\b'
+                has_adjectives = re.search(adjectives_pattern, sentence, re.IGNORECASE)
                 
-                has_prepositions = re.search(r'\b(in|on|at|over|under|above|below|beneath|'
-                                           r'beside|along|through|across|around|between|'
-                                           r'among|beyond|past|near|far from)\b', 
-                                           sentence, re.IGNORECASE)
+                prepositions_pattern = r'\b(' + '|'.join(self.prepositions) + r')\b'
+                has_prepositions = re.search(prepositions_pattern, sentence, re.IGNORECASE)
                 
                 # Longer sentences tend to be more descriptive
                 if len(sentence.split()) > 6 and (has_adjectives or has_prepositions):
@@ -127,8 +196,7 @@ class GutenbergTextExtractor:
                 passage = " ".join(descriptive_sentences[start_index:start_index + passage_length])
                 
                 # Classify the passage type
-                passage_type = self.classify_passage(passage, landscape_keywords, 
-                                                    seascape_keywords, cityscape_keywords)
+                passage_type = self.classify_passage(passage)
                 
                 passages.append({
                     'text': passage,
@@ -140,13 +208,13 @@ class GutenbergTextExtractor:
         
         return passages
     
-    def classify_passage(self, passage, landscape_keywords, seascape_keywords, cityscape_keywords):
+    def classify_passage(self, passage):
         """Classify passage as landscape, seascape, or cityscape"""
         passage_lower = passage.lower()
         
-        landscape_count = sum(1 for keyword in landscape_keywords if keyword in passage_lower)
-        seascape_count = sum(1 for keyword in seascape_keywords if keyword in passage_lower)
-        cityscape_count = sum(1 for keyword in cityscape_keywords if keyword in passage_lower)
+        landscape_count = sum(1 for keyword in self.landscape_keywords if keyword in passage_lower)
+        seascape_count = sum(1 for keyword in self.seascape_keywords if keyword in passage_lower)
+        cityscape_count = sum(1 for keyword in self.cityscape_keywords if keyword in passage_lower)
         
         if seascape_count > landscape_count and seascape_count > cityscape_count:
             return "seascape"
@@ -164,7 +232,7 @@ class GutenbergTextExtractor:
             
             text = self.get_book_text(book_id)
             if text:
-                cleaned_text = self.clean_gutenberg_text(text)
+                cleaned_text = self.get_clean_text(text)
                 passages = self.extract_descriptive_passages(cleaned_text, num_passages=1)
                 
                 for passage in passages:
@@ -180,4 +248,7 @@ class GutenbergTextExtractor:
             return random.sample(all_passages, num_passages)
         else:
             return all_passages
-
+    
+    def get_clean_text(self, text):
+        """Public method to clean Gutenberg text"""
+        return self.clean_gutenberg_text(text)

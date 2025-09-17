@@ -1,8 +1,8 @@
 from gutenberg_extractor import GutenbergTextExtractor
 
 def main():
-    # Create an instance of the extractor
-    extractor = GutenbergTextExtractor()
+    # Create an instance of the extractor with config file
+    extractor = GutenbergTextExtractor("config.txt")
     
     # Get descriptive passages from Dickens' works
     passages = extractor.get_dickens_descriptions(num_passages=3)
@@ -18,6 +18,5 @@ def main():
         print(passage['text'])
         print()
 
-# Run the main function if this script is executed directly
 if __name__ == "__main__":
     main()
